@@ -176,7 +176,7 @@ describe("element locking", () => {
     });
 
     it("should create new elements with stroke width by element type", () => {
-      API.setAppState({ currentItemStrokeWidthKey: "bold" });
+      API.setAppState({ currentItemStrokeWidth: STROKE_WIDTH.bold });
 
       const rect = API.createElement({ type: "rectangle" });
       const freedraw = API.createElement({ type: "freedraw" });

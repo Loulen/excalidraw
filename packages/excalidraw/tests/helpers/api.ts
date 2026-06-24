@@ -8,7 +8,7 @@ import {
   DEFAULT_VERTICAL_ALIGN,
   ROUNDNESS,
   assertNever,
-  getStrokeWidthByKey,
+  nominalToActual,
 } from "@excalidraw/common";
 
 import {
@@ -268,7 +268,7 @@ export class API {
       fillStyle: rest.fillStyle ?? appState.currentItemFillStyle,
       strokeWidth:
         rest.strokeWidth ??
-        getStrokeWidthByKey(type, appState.currentItemStrokeWidthKey),
+        nominalToActual(type, appState.currentItemStrokeWidth),
       strokeStyle: rest.strokeStyle ?? appState.currentItemStrokeStyle,
       roundness: (
         rest.roundness === undefined

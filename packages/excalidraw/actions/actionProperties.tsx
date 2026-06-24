@@ -12,7 +12,10 @@ import {
   DEFAULT_FONT_SIZE,
   FONT_FAMILY,
   ROUNDNESS,
-  STROKE_WIDTH_KEYS,
+  STROKE_WIDTH,
+  STROKE_WIDTH_MIN,
+  STROKE_WIDTH_MAX,
+  STROKE_WIDTH_STEP,
   VERTICAL_ALIGN,
   KEYS,
   randomInteger,
@@ -20,11 +23,12 @@ import {
   getFontFamilyString,
   getLineHeight,
   isTransparent,
-  getStrokeWidthByKey,
+  nominalToActual,
+  actualToNominal,
+  clampStrokeWidth,
   reduceToCommonValue,
   invariant,
   FONT_SIZES,
-  type StrokeWidthKey,
 } from "@excalidraw/common";
 
 import { canBecomePolygon, getNonDeletedElements } from "@excalidraw/element";
@@ -554,79 +558,91 @@ export const actionChangeFillStyle = register<ExcalidrawElement["fillStyle"]>({
   },
 });
 
-const getStrokeWidthKeyForElement = (
-  element: ExcalidrawElement,
-): StrokeWidthKey | null => {
-  return (
-    STROKE_WIDTH_KEYS.find(
-      (key) => getStrokeWidthByKey(element.type, key) === element.strokeWidth,
-    ) ?? null
-  );
-};
-
-const getStrokeWidthForElement = (
-  element: ExcalidrawElement,
-  strokeWidthKey: StrokeWidthKey,
-): ExcalidrawElement["strokeWidth"] => {
-  return getStrokeWidthByKey(element.type, strokeWidthKey);
-};
-
-export const actionChangeStrokeWidth = register<StrokeWidthKey>({
+export const actionChangeStrokeWidth = register<number>({
   name: "changeStrokeWidth",
   label: "labels.strokeWidth",
   trackEvent: false,
   perform: (elements, appState, value) => {
-    invariant(value, "actionChangeStrokeWidth: value must be defined");
+    invariant(
+      typeof value === "number" && Number.isFinite(value),
+      "actionChangeStrokeWidth: value must be a finite number",
+    );
+
+    // hard-clamp the nominal width to its bounds; presets (1/2/4) are inside
+    // the range, so this is a no-op for them and a guard for custom input.
+    const nextWidth = clampStrokeWidth(value);
 
     return {
       elements: changeProperty(elements, appState, (el) =>
         newElementWith(el, {
-          strokeWidth: getStrokeWidthForElement(el, value),
+          // the ½ freedraw rule lives in a single place: nominal → effective.
+          strokeWidth: nominalToActual(el.type, nextWidth),
         }),
       ),
-      appState: { ...appState, currentItemStrokeWidthKey: value },
+      appState: { ...appState, currentItemStrokeWidth: nextWidth },
       captureUpdate: CaptureUpdateAction.IMMEDIATELY,
     };
   },
-  PanelComponent: ({ elements, appState, updateData, app, data }) => (
-    <fieldset>
-      <legend>{t("labels.strokeWidth")}</legend>
-      <div className="buttonList">
-        <RadioSelection<StrokeWidthKey>
-          group="stroke-width"
-          options={[
-            {
-              value: "thin",
-              text: t("labels.thin"),
-              icon: StrokeWidthBaseIcon,
-              testId: "strokeWidth-thin",
-            },
-            {
-              value: "medium",
-              text: t("labels.medium"),
-              icon: StrokeWidthBoldIcon,
-              testId: "strokeWidth-medium",
-            },
-            {
-              value: "bold",
-              text: t("labels.bold"),
-              icon: StrokeWidthExtraBoldIcon,
-              testId: "strokeWidth-bold",
-            },
-          ]}
-          value={getFormValue(
-            elements,
-            app,
-            getStrokeWidthKeyForElement,
-            (element) => element.hasOwnProperty("strokeWidth"),
-            (hasSelection) =>
-              hasSelection ? null : appState.currentItemStrokeWidthKey,
-          )}
-          onChange={(value) => updateData(value)}
-        />
-      </div>
-    </fieldset>
-  ),
+  PanelComponent: ({ elements, appState, updateData, app }) => {
+    // the panel works in nominal width; freedraw carries the halved effective
+    // width, so map every element back to nominal before comparing.
+    const width = getFormValue<number | null>(
+      elements,
+      app,
+      (element) => actualToNominal(element.type, element.strokeWidth),
+      (element) => element.hasOwnProperty("strokeWidth"),
+      (hasSelection) => (hasSelection ? null : appState.currentItemStrokeWidth),
+    );
+
+    return (
+      <fieldset>
+        <legend>{t("labels.strokeWidth")}</legend>
+        <div className="buttonList">
+          <RadioSelection<number>
+            group="stroke-width"
+            options={[
+              {
+                value: STROKE_WIDTH.thin,
+                text: t("labels.thin"),
+                icon: StrokeWidthBaseIcon,
+                testId: "strokeWidth-thin",
+              },
+              {
+                value: STROKE_WIDTH.medium,
+                text: t("labels.medium"),
+                icon: StrokeWidthBoldIcon,
+                testId: "strokeWidth-medium",
+              },
+              {
+                value: STROKE_WIDTH.bold,
+                text: t("labels.bold"),
+                icon: StrokeWidthExtraBoldIcon,
+                testId: "strokeWidth-bold",
+              },
+            ]}
+            value={width}
+            onChange={(value) => updateData(value)}
+          />
+          <input
+            type="number"
+            className="strokeWidthCustom"
+            aria-label={t("labels.strokeWidth")}
+            min={STROKE_WIDTH_MIN}
+            max={STROKE_WIDTH_MAX}
+            step={STROKE_WIDTH_STEP}
+            value={width ?? ""}
+            data-testid="strokeWidth-custom"
+            onChange={(event) => {
+              const parsed = parseFloat(event.target.value);
+              if (Number.isFinite(parsed)) {
+                updateData(clampStrokeWidth(parsed));
+              }
+            }}
+          />
+        </div>
+      </fieldset>
+    );
+  },
 });
 
 export const actionChangeSloppiness = register<ExcalidrawElement["roughness"]>({

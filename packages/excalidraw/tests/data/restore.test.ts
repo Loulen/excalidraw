@@ -1,7 +1,12 @@
 import { pointFrom } from "@excalidraw/math";
 import { vi } from "vitest";
 
-import { DEFAULT_SIDEBAR, FONT_FAMILY, ROUNDNESS } from "@excalidraw/common";
+import {
+  DEFAULT_SIDEBAR,
+  FONT_FAMILY,
+  ROUNDNESS,
+  STROKE_WIDTH,
+} from "@excalidraw/common";
 
 import { newElementWith } from "@excalidraw/element";
 import * as sizeHelpers from "@excalidraw/element";
@@ -750,19 +755,20 @@ describe("restoreAppState", () => {
     expect(restoredAppState.name).toBe(stubImportedAppState.name);
   });
 
-  it("should migrate legacy current item stroke width to stroke width key", () => {
+  it("should migrate a legacy stroke width preset key to a nominal number", () => {
     const stubImportedAppState = {
       ...getDefaultAppState(),
-      currentItemStrokeWidth: 4,
-      currentItemStrokeWidthKey: undefined,
+      currentItemStrokeWidthKey: "bold",
     } as any;
+    // a pure-legacy app state carries only the preset key, not the number
+    delete stubImportedAppState.currentItemStrokeWidth;
 
     const restoredAppState = restore.restoreAppState(
       stubImportedAppState,
       null,
     );
 
-    expect(restoredAppState.currentItemStrokeWidthKey).toBe("bold");
+    expect(restoredAppState.currentItemStrokeWidth).toBe(STROKE_WIDTH.bold);
   });
 
   it("should restore with current app state when imported data state is undefined", () => {

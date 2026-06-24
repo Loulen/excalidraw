@@ -111,7 +111,7 @@ import {
   setDesktopUIMode,
   isSelectionLikeTool,
   oneOf,
-  getStrokeWidthByKey,
+  nominalToActual,
 } from "@excalidraw/common";
 
 import {
@@ -9517,10 +9517,7 @@ class App extends React.Component<AppProps, AppState> {
   }
 
   private getCurrentItemStrokeWidth(elementType: ExcalidrawElement["type"]) {
-    return getStrokeWidthByKey(
-      elementType,
-      this.state.currentItemStrokeWidthKey,
-    );
+    return nominalToActual(elementType, this.state.currentItemStrokeWidth);
   }
 
   private createGenericElementOnPointerDown = (

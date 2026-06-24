@@ -20,7 +20,6 @@ import {
   normalizeLink,
   getLineHeight,
   STROKE_WIDTH,
-  STROKE_WIDTH_KEYS,
   type StrokeWidthKey,
 } from "@excalidraw/common";
 import {
@@ -206,12 +205,6 @@ const restoreStrokeVariability = (
     ALLOWED_STROKE_VARIABILITIES.has(variability as StrokeVariability)
     ? (variability as StrokeVariability)
     : defaultValue;
-};
-
-const getStrokeWidthKey = (strokeWidth: unknown): StrokeWidthKey | null => {
-  return isFiniteNumber(strokeWidth)
-    ? STROKE_WIDTH_KEYS.find((key) => STROKE_WIDTH[key] === strokeWidth) ?? null
-    : null;
 };
 
 const restoreFreedrawStrokeOptions = (
@@ -1099,11 +1092,13 @@ export const restoreAppState = (
     nextAppState.boxSelectionMode = boxSelectionMode;
   }
 
-  // legacy
-  if ((appState as any).currentItemStrokeWidth !== undefined) {
-    nextAppState.currentItemStrokeWidthKey =
-      getStrokeWidthKey((appState as any).currentItemStrokeWidth) ??
-      defaultAppState.currentItemStrokeWidthKey;
+  // legacy: older app states stored the next-stroke width as a preset key
+  // (`currentItemStrokeWidthKey`); migrate it to the nominal number so old
+  // scenes open with no change in rendering.
+  if ((appState as any).currentItemStrokeWidthKey !== undefined) {
+    const key = (appState as any).currentItemStrokeWidthKey as StrokeWidthKey;
+    nextAppState.currentItemStrokeWidth =
+      STROKE_WIDTH[key] ?? defaultAppState.currentItemStrokeWidth;
   }
 
   return {
